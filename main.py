@@ -152,3 +152,17 @@ async def main() -> None:
     print(f"{Fore.GREEN}Initial Sync{Style.RESET_ALL}")
     response = await client.sync(timeout=30000, full_state=True)
     client.check_response(response, SyncResponse, f"failed to sync  got {str(response)}")
+
+    session.next_batch = response.next_batch
+    session.write_to_disk()
+
+    await client.close()
+
+try:
+    asyncio.run(main())
+except Exception:
+    print(traceback.format_exc())
+    sys.exit(1)
+except KeyboardInterrupt:
+    print("Received keyboard interrupt.")
+    sys.exit(0)
