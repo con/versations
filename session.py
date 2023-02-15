@@ -28,7 +28,7 @@ class Session:
     def from_file(cls, path=DEFAULT_SESSION_PATH):
         try:
             with open(path, "r") as session_file:
-                data = yaml.load(session_file.read())
+                data = yaml.load(session_file.read(), Loader=yaml.Loader)
                 data["new_session"] = False
                 return cls(**data)
         except FileNotFoundError as e:

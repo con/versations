@@ -43,9 +43,8 @@ from client_callbacks import Callbacks
 
 
 HELP = f"""
-{Fore.YELLOW}How to use this script:
+How to use this script:
 
-{Fore.WHITE}
 Passwords, and all other variables to this program are set via environment variable:
 
 #  - export MATRIX_KEYS_PASSPHRASE (Required) passphrase to decrypyt the session keys.
@@ -70,7 +69,7 @@ Passwords, and all other variables to this program are set via environment varia
 #    export TODO (ACCESS TOKEN FILE SHOULD BE ENCRYPTED)
 #  # export TODO(split into output and persistent)
 #  - export MATRIX_STORE_PATH (Default: output/)
-{Style.RESET_ALL}"""
+"""
 
 async def main() -> None:
     session=Session.from_file()

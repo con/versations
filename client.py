@@ -3,7 +3,7 @@
 # import getpass
 # import json
 import os
-# import sys
+import sys
 # import traceback
 # import rich
 #
@@ -89,7 +89,7 @@ class VersationsClient(AsyncClient):
 
     async def password_login(self):
         if not self.session.password:
-            print(f"{Fore.RED}Needed password, didnt have it. \n\n{Fore.GREEN}{HELP}{Style.RESET_ALL}")
+            print(f"{Fore.RED}Needed password, didnt have it. {Style.RESET_ALL}")
             sys.exit(1)
 
         resp = await self.login(password=self.session.password)
