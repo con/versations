@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python3
 import asyncio
 import getpass
 import json
@@ -86,7 +86,7 @@ async def main() -> None:
     )
     # Load our saved session
     # import ipdb; ipdb.set_trace()
-    client = VersationsClient(session=session, config=client_config, store_path="output")
+    client = VersationsClient(session=session, config=client_config, store_path="/mnt/datasets/con/matrix-archive")
     callbacks = Callbacks(client)
     client.add_to_device_callback(callbacks.to_device_callback, (KeyVerificationEvent,))
     if session.access_token:
@@ -103,7 +103,7 @@ async def main() -> None:
     else: # First time
         print(f"{Fore.YELLOW}No access token, attempting password login.{Style.RESET_ALL}")
         # TODO configure
-        os.makedirs("output", exist_ok=True)
+        # os.makedirs("output", exist_ok=True)
         # TODO unless response is error...
         # print("swallowing exception for token login: {e}")
         await client.password_login()
