@@ -1,4 +1,6 @@
 # e2e goodness would need to build something which needs
-# libolm-dev  on debian systems
+# libolm-dev  on debian systems and fedora
 matrix-nio[e2e]
+colorama
 pyyaml
+rich

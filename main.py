@@ -71,7 +71,7 @@ Passwords, and all other variables to this program are set via environment varia
 #  - export MATRIX_STORE_PATH (Default: output/)
 """
 
-async def main() -> None:
+async def connect() -> VersationsClient:
     session=Session.from_file()
     client_config = AsyncClientConfig(
         max_limit_exceeded=0,
@@ -128,25 +128,22 @@ async def main() -> None:
 
     if not (session.keys_path and session.keys_passphrase):
         raise Exception(HELP + "\n\n ...\nPlease set keys_path and passphrase")
-    await client.import_keys(session.keys_path, session.keys_passphrase)
+
+    if os.path.isfile(session.keys_path):
+        await client.import_keys(session.keys_path, session.keys_passphrase)
 
     # Trust the other bot devices
     client.trust_user_all_devices(session.user_id)
     # Trust foreach [users]
     # TODO store in session
     client.trust_user_all_devices("@asmacdo:matrix.org")
+    return client
 
-    # Write each message to file
-    client.add_event_callback(client.write_message_event, RoomMessageText)
-    client._messages_written = 0
-
-    print(f"{Fore.GREEN}Initial Sync{Style.RESET_ALL}")
-    response = await client.sync(timeout=30000, full_state=True)
-    client.check_response(response, SyncResponse, f"failed to sync  got {str(response)}")
-
-    session.next_batch = response.next_batch
-    session.write_to_disk()
-
+async def main():
+    client = await connect()
+    await client.log_messages()
+    await client.send_message("!NTPjxxatfDCtusBRrV:matrix.org", "blurp beep boop")
+    client.session.write_to_disk()
     await client.close()
 
 try:

@@ -24,7 +24,6 @@ class Session:
         self.new_session=new_session
 
     @classmethod
-    # TODO(de-hardcod path
     def from_file(cls, path=DEFAULT_SESSION_PATH):
         try:
             with open(path, "r") as session_file:
@@ -43,7 +42,6 @@ class Session:
                 "homeserver": self.homeserver,
                 "access_token": self.access_token,
                 # "room_id": self.room_id,
-                # TODO we need another sync placeholder per room?
                 "next_batch": self.next_batch,
             }
             token_file.write(yaml.dump(store_vars))
