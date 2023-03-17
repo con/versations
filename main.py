@@ -74,18 +74,11 @@ Passwords, and all other variables to this program are set via environment varia
 async def main() -> None:
     session=Session.from_file()
     client_config = AsyncClientConfig(
-        # TODO(in mememory store?)
-        # store=store.DefaultStore(),
-        # https://github.com/poljar/matrix-nio/issues/163#issuecomment-641225582
-        # store=SqliteMemoryStore,
-        # store=store.DefaultStore(session.user_id, session.device_id, "output"),
         max_limit_exceeded=0,
         max_timeouts=0,
         store_sync_tokens=True,
         encryption_enabled=True,
     )
-    # Load our saved session
-    # import ipdb; ipdb.set_trace()
     client = VersationsClient(session=session, config=client_config, store_path="/mnt/datasets/con/matrix-archive")
     callbacks = Callbacks(client)
     client.add_to_device_callback(callbacks.to_device_callback, (KeyVerificationEvent,))
@@ -133,7 +126,6 @@ async def main() -> None:
         await client.keys_upload()
 
 
-    # TODO(whats the order this has to happen?)
     if not (session.keys_path and session.keys_passphrase):
         raise Exception(HELP + "\n\n ...\nPlease set keys_path and passphrase")
     await client.import_keys(session.keys_path, session.keys_passphrase)
