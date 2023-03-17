@@ -12,7 +12,6 @@ from nio import (
 #     AsyncClientConfig,
     exceptions,
 #     KeyVerificationCancel,
-    KeyVerificationEvent,
 #     KeyVerificationKey,
 #     KeyVerificationMac,
 #     KeyVerificationStart,
@@ -111,8 +110,8 @@ class VersationsClient(AsyncClient):
                     "body": body,
                 },
             )
-        except exceptions.OlmUnverifiedDeviceError as err:
-            print(f"probably need to run the verify session")
+        except exceptions.OlmUnverifiedDeviceError:
+            print("probably need to run the verify session")
             raise
 
     async def verify_session_with_emoji(self):
@@ -129,5 +128,5 @@ class VersationsClient(AsyncClient):
     def trust_user_all_devices(self, user_id):
         for device_id, olm_device in self.device_store[user_id].items():
             print(f"{Fore.YELLOW} Trusting {olm_device.display_name}/{device_id} from user {user_id} \\ Last Used ....TODO{Style.RESET_ALL}")
-            response = self.verify_device(olm_device)
+            self.verify_device(olm_device)
 

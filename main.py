@@ -1,40 +1,15 @@
 #!/usr/bin/env python3
 import asyncio
-import getpass
-import json
 import os
 import sys
 import traceback
-import rich
 
 from nio import (
-    AsyncClient,
     AsyncClientConfig,
-    exceptions,
-    KeyVerificationCancel,
     KeyVerificationEvent,
-    KeyVerificationKey,
-    KeyVerificationMac,
-    KeyVerificationStart,
-    MatrixRoom,
-    MegolmEvent,
     LocalProtocolError,
-    LoginResponse,
-    RedactionEvent,
-    RedactedEvent,
-    RoomEncryptionEvent,
-    RoomGuestAccessEvent,
-    RoomMemberEvent,
-    RoomMessageText,
-    RoomMessagesResponse,
-    RoomNameEvent,
-    # SqliteMemoryStore, broken
-    store,
-    SyncResponse,
-    ToDeviceError,
 )
 
-from datetime import datetime
 from session import Session
 from colorama import Fore, Style
 
@@ -42,7 +17,7 @@ from client import VersationsClient
 from client_callbacks import Callbacks
 
 
-HELP = f"""
+HELP = """
 How to use this script:
 
 Passwords, and all other variables to this program are set via environment variable:
@@ -67,7 +42,7 @@ Passwords, and all other variables to this program are set via environment varia
 #  - export MATRIX_ROOM_ID (Optional): Needed for send and other things, but not sync.
 #
 #    export TODO (ACCESS TOKEN FILE SHOULD BE ENCRYPTED)
-#  # export TODO(split into output and persistent)
+#    export TODO(split into output and persistent)
 #  - export MATRIX_STORE_PATH (Default: output/)
 """
 
@@ -89,26 +64,18 @@ async def connect() -> VersationsClient:
                                  access_token=session.access_token)
             print(f"{Fore.GREEN}Login restored from token{Style.RESET_ALL}")
             print(f"{Fore.WHITE} This device is: {Fore.MAGENTA}{session.device_id}{Style.RESET_ALL}")
-        except LocalProtocolError as e:
-            print(f"""{Fore.RED} There is an access token it still didnt wor. Maybe no device id?
+        except LocalProtocolError:
+            print(f"""{Fore.RED} There is an access token but it didnt work. Maybe no device id?
             Thats a weird situation... probably you should just delete that
             session file and start from scratch.""")
     else: # First time
         print(f"{Fore.YELLOW}No access token, attempting password login.{Style.RESET_ALL}")
-        # TODO configure
-        # os.makedirs("output", exist_ok=True)
-        # TODO unless response is error...
-        # print("swallowing exception for token login: {e}")
+        os.makedirs("output", exist_ok=True)
         await client.password_login()
-    # TODO this is bad. how can we do this better...
-        # this doesnt need to be run every time. ?
-        # add configuration?
 
-    print("Loading encryption store.")
-    print("(takes a minute)  ...")
+    print("Loading encryption store. (takes a minute  ...)")
     client.load_store()
 
-    # TODO(if we are using exported keys, is this necessary?
     if session.new_session:
         print(f"""{Fore.GREEN}You've come so far, you're almost there.
 
@@ -134,8 +101,7 @@ async def connect() -> VersationsClient:
 
     # Trust the other bot devices
     client.trust_user_all_devices(session.user_id)
-    # Trust foreach [users]
-    # TODO store in session
+    # TODO Trust foreach [users]
     client.trust_user_all_devices("@asmacdo:matrix.org")
     return client
 
