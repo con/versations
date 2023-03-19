@@ -1,50 +1,20 @@
-#
-# import asyncio
-# import getpass
-# import json
 import os
 import sys
-# import traceback
-# import rich
-#
+from datetime import datetime
+
+from colorama import Fore, Style
 from nio import (
     AsyncClient,
-#     AsyncClientConfig,
     exceptions,
-#     KeyVerificationCancel,
-#     KeyVerificationKey,
-#     KeyVerificationMac,
-#     KeyVerificationStart,
-#     MatrixRoom,
-#     MegolmEvent,
-#     LocalProtocolError,
     LoginResponse,
-#     RedactionEvent,
-#     RedactedEvent,
-#     RoomEncryptionEvent,
-#     RoomGuestAccessEvent,
-#     RoomMemberEvent,
     RoomMessageText,
-#     RoomMessagesResponse,
-#     RoomNameEvent,
     SyncResponse,
-#     ToDeviceError,
 )
-#
-from datetime import datetime
-# from session import Session
-# from colorama import Fore, Style
-#
 
-# from client_callbacks import Callbacks
-from colorama import Fore, Style
-
-# file to store credentials in case you want to run program multiple times
 class VersationsClient(AsyncClient):
     def __init__(self, session, config=None, store_path=None):
         self.session = session
         super().__init__(
-            # TODO no store no path?
             homeserver=session.homeserver,
             user=session.user_id,
             store_path=store_path,
@@ -95,6 +65,7 @@ class VersationsClient(AsyncClient):
 
         self.session.device_id = resp.device_id
         self.session.access_token = resp.access_token
+        # TODO
         # self.session.validate()
         self.session.write_to_disk()
 

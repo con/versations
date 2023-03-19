@@ -30,7 +30,7 @@ class Session:
                 data = yaml.load(session_file.read(), Loader=yaml.Loader)
                 data["new_session"] = False
                 return cls(**data)
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             print(f"{Fore.YELLOW}No session file found at at {path}{Style.RESET_ALL}")
             return cls(new_session=True)
 
@@ -47,9 +47,9 @@ class Session:
             token_file.write(yaml.dump(store_vars))
 
     # TODO use and make this good
-    def validate(self):
-        if self.access_token or self.password:
-            return
-        else:
-            raise Exception("Need password or token. Got neither")
+    # def validate(self):
+    #     if self.access_token or self.password:
+    #         return
+    #     else:
+    #         raise Exception("Need password or token. Got neither")
 
