@@ -4,6 +4,7 @@ import os
 import sys
 import traceback
 
+import click
 from nio import (
     AsyncClientConfig,
     KeyVerificationEvent,
@@ -105,18 +106,29 @@ async def connect() -> VersationsClient:
     client.trust_user_all_devices("@asmacdo:matrix.org")
     return client
 
-async def main():
-    client = await connect()
-    await client.log_messages()
-    await client.send_message("!NTPjxxatfDCtusBRrV:matrix.org", "blurp beep boop")
-    client.session.write_to_disk()
-    await client.close()
+@click.group()
+def cli():
+    pass
 
-try:
-    asyncio.run(main())
-except Exception:
-    print(traceback.format_exc())
-    sys.exit(1)
-except KeyboardInterrupt:
-    print("Received keyboard interrupt.")
-    sys.exit(0)
+@cli.command()
+def help():
+    click.echo("hallllp")
+
+@cli.command()
+def sync():
+    click.echo("SYNCTIME")
+
+@cli.command()
+@click.option("--room", help="Send message to this Room ID")
+@click.argument("message")
+def send(room, message):
+    click.echo("room")
+    click.echo(room)
+
+    click.echo("message")
+    click.echo(message)
+    # client = await connect()
+    # await client.log_messages()
+    # await client.send_message("!NTPjxxatfDCtusBRrV:matrix.org", "blurp beep boop")
+    # client.session.write_to_disk()
+    # await client.close()
