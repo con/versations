@@ -6,7 +6,7 @@ with open("requirements.txt") as requirements:
 setup(
     name='versations',
     version='0.1.0',
-    py_modules=['main'],
+    py_modules=['main.py'],
     install_requires=requirements,
     entry_points={
         'console_scripts': [

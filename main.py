@@ -121,35 +121,25 @@ def cli():
 @click.option("--room", help="Matrix Room ID to sync with")
 @coro
 async def sync(room):
-    click.echo("SYNCTIME")
     client = await connect()
     await client.log_messages()
     client.session.write_to_disk()
     await client.close()
 
 @cli.command(help="Sync with a room and then send a message")
-@click.option("--room", required=True, help="Matrix Room ID to send message to.")
+@click.option("--room", required=True, help="Matrix Room ID to send a message to.")
 @click.option('-f', '--file', type=click.File('r'), help='Path to outgoing message file')
 @click.argument("message", required=False)
+@coro
 async def send(room, file, message):
     if not (file or message):
         raise ValueError("Either the message string or a message file must be provided.")
     if file:
         message = file.read()
-        click.echo(f'Reading content from file {file}: {content}')
     client = await connect()
     await client.log_messages()
     await client.send_message(room, message)
+    # To capture the message we just sent. I dont feel strongly about keeping that.
     await client.log_messages()
     client.session.write_to_disk()
     await client.close()
-    click.echo("room")
-    click.echo(room)
-#
-#     click.echo("message")
-    # click.echo(message)
-    # client = await connect()
-    # await client.log_messages()
-    # await client.send_message("!NTPjxxatfDCtusBRrV:matrix.org", "blurp beep boop")
-    # client.session.write_to_disk()
-    # await client.close()

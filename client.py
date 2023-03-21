@@ -71,7 +71,6 @@ class VersationsClient(AsyncClient):
 
 
     async def send_message(self, room_id, body=None):
-        body = body or "Hello, this message should be encrypted, let me know if theres a problem",
         try:
             await self.room_send(
                 room_id=room_id,
