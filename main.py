@@ -3,6 +3,7 @@ import asyncio
 import os
 import sys
 import traceback
+from functools import wraps
 
 import click
 from nio import (
@@ -106,27 +107,47 @@ async def connect() -> VersationsClient:
     client.trust_user_all_devices("@asmacdo:matrix.org")
     return client
 
-@click.group()
+def coro(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        return asyncio.run(f(*args, **kwargs))
+    return wrapper
+
+@click.group(help="Versations is a Matrix bot that logs chat records and sends messages.")
 def cli():
     pass
 
-@cli.command()
-def help():
-    click.echo("hallllp")
-
-@cli.command()
-def sync():
+@cli.command(help="Sync with the specified room, and output to a file.")
+@click.option("--room", help="Matrix Room ID to sync with")
+@coro
+async def sync(room):
     click.echo("SYNCTIME")
+    client = await connect()
+    await client.log_messages()
+    client.session.write_to_disk()
+    await client.close()
 
-@cli.command()
-@click.option("--room", help="Send message to this Room ID")
-@click.argument("message")
-def send(room, message):
+@cli.command(help="Sync with a room and then send a message")
+@click.option("--room", required=True, help="Matrix Room ID to send message to.")
+@click.option('-f', '--file', type=click.File('r'), help='Path to outgoing message file')
+@click.argument("message", required=False)
+async def send(room, file, message):
+    if not (file or message):
+        raise ValueError("Either the message string or a message file must be provided.")
+    if file:
+        message = file.read()
+        click.echo(f'Reading content from file {file}: {content}')
+    client = await connect()
+    await client.log_messages()
+    await client.send_message(room, message)
+    await client.log_messages()
+    client.session.write_to_disk()
+    await client.close()
     click.echo("room")
     click.echo(room)
-
-    click.echo("message")
-    click.echo(message)
+#
+#     click.echo("message")
+    # click.echo(message)
     # client = await connect()
     # await client.log_messages()
     # await client.send_message("!NTPjxxatfDCtusBRrV:matrix.org", "blurp beep boop")
