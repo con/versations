@@ -72,6 +72,7 @@ class VersationsClient(AsyncClient):
 
     async def send_message(self, room_id, body=None):
         try:
+            # We must ignore unverified, or we cannot send messages if anyone has an unverified device.
             await self.room_send(
                 room_id=room_id,
                 message_type="m.room.message",
@@ -79,6 +80,7 @@ class VersationsClient(AsyncClient):
                     "msgtype": "m.text",
                     "body": body,
                 },
+                ignore_unverified_devices=True,
             )
         except exceptions.OlmUnverifiedDeviceError:
             print("probably need to run the verify session")
