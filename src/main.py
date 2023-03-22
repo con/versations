@@ -11,12 +11,11 @@ from nio import (
     KeyVerificationEvent,
     LocalProtocolError,
 )
-
-from session import Session
 from colorama import Fore, Style
 
-from client import VersationsClient
-from client_callbacks import Callbacks
+from .client import VersationsClient
+from .client_callbacks import Callbacks
+from .session import Session
 
 
 HELP = """
