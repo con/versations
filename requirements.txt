@@ -1,2 +1,0 @@
-# e2e goodness would need to build something which needs
-# libolm-dev  on debian systems and fedora
