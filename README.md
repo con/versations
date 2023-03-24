@@ -22,4 +22,4 @@ docs](https://matrix-nio.readthedocs.io/en/latest/) for more
 information.
 
 With libolm installed, it can be installed via `git clone` and `pip
-install .`
+install .` or `pip install git+https://github.com/con/versations`.
