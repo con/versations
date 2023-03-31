@@ -132,8 +132,12 @@ async def sync(room):
 @click.argument("message", required=False)
 @coro
 async def send(room, file, md, message):
+    if file and message:
+        raise ValueError("Either the message string or a message file must be provided, not both!")
     if not (file or message):
-        raise ValueError("Either the message string or a message file must be provided.")
+        message = sys.stdin.read()
+        if not message:
+            raise ValueError("Either the message string, stdin, or a message file must be provided!")
     if file:
         message = file.read()
     client = await connect()
