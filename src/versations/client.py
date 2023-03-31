@@ -11,7 +11,7 @@ from nio import (
     RoomMessageText,
     SyncResponse,
 )
-from nio.events.room_events import RoomMessageText
+
 
 class VersationsClient(AsyncClient):
     def __init__(self, session, config=None, store_path=None):
