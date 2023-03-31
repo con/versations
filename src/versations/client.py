@@ -1,3 +1,4 @@
+import markdown
 import os
 import sys
 from datetime import datetime
@@ -10,6 +11,7 @@ from nio import (
     RoomMessageText,
     SyncResponse,
 )
+from nio.events.room_events import RoomMessageText
 
 class VersationsClient(AsyncClient):
     def __init__(self, session, config=None, store_path=None):
@@ -70,16 +72,22 @@ class VersationsClient(AsyncClient):
         self.session.write_to_disk()
 
 
-    async def send_message(self, room_id, body=None):
+    async def send_message(self, room_id, body=None, convert_markdown=False):
         try:
+            content = {
+                "msgtype": "m.text",
+                "format": "org.matrix.custom.html",
+                "body": body,
+            }
+            # Convert to html
+            if convert_markdown:
+                content["formatted_body"] = markdown.markdown(body)
+
             # We must ignore unverified, or we cannot send messages if anyone has an unverified device.
             await self.room_send(
                 room_id=room_id,
                 message_type="m.room.message",
-                content={
-                    "msgtype": "m.text",
-                    "body": body,
-                },
+                content=content,
                 ignore_unverified_devices=True,
             )
         except exceptions.OlmUnverifiedDeviceError:
