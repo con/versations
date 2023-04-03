@@ -1,24 +1,14 @@
-# import asyncio
-# import getpass
-# import json
-# import os
-# import sys
 import traceback
-#
+
 from nio import (
-    # AsyncClient,
-    # AsyncClientConfig,
     KeyVerificationCancel,
     KeyVerificationEvent,
     KeyVerificationKey,
     KeyVerificationMac,
     KeyVerificationStart,
     LocalProtocolError,
-    # LoginResponse,
     ToDeviceError,
 )
-
-# file to store credentials in case you want to run program multiple times
 
 class Callbacks(object):
     """Class to pass client to callback methods."""

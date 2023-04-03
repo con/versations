@@ -37,6 +37,6 @@ MANIFEST
 pip-log.txt
 pip-delete-this-directory.txt
 
-output/*
+output/
 
 .scratch

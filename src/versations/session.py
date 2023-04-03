@@ -24,14 +24,13 @@ class Session:
         self.new_session=new_session
 
     @classmethod
-    # TODO(de-hardcod path
     def from_file(cls, path=DEFAULT_SESSION_PATH):
         try:
             with open(path, "r") as session_file:
                 data = yaml.load(session_file.read(), Loader=yaml.Loader)
                 data["new_session"] = False
                 return cls(**data)
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             print(f"{Fore.YELLOW}No session file found at at {path}{Style.RESET_ALL}")
             return cls(new_session=True)
 
@@ -43,15 +42,14 @@ class Session:
                 "homeserver": self.homeserver,
                 "access_token": self.access_token,
                 # "room_id": self.room_id,
-                # TODO we need another sync placeholder per room?
                 "next_batch": self.next_batch,
             }
             token_file.write(yaml.dump(store_vars))
 
     # TODO use and make this good
-    def validate(self):
-        if self.access_token or self.password:
-            return
-        else:
-            raise Exception("Need password or token. Got neither")
+    # def validate(self):
+    #     if self.access_token or self.password:
+    #         return
+    #     else:
+    #         raise Exception("Need password or token. Got neither")
 

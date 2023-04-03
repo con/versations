@@ -1,48 +1,24 @@
 #!/usr/bin/env python3
 import asyncio
-import getpass
-import json
 import os
 import sys
 import traceback
-import rich
+from functools import wraps
 
+import click
 from nio import (
-    AsyncClient,
     AsyncClientConfig,
-    exceptions,
-    KeyVerificationCancel,
     KeyVerificationEvent,
-    KeyVerificationKey,
-    KeyVerificationMac,
-    KeyVerificationStart,
-    MatrixRoom,
-    MegolmEvent,
     LocalProtocolError,
-    LoginResponse,
-    RedactionEvent,
-    RedactedEvent,
-    RoomEncryptionEvent,
-    RoomGuestAccessEvent,
-    RoomMemberEvent,
-    RoomMessageText,
-    RoomMessagesResponse,
-    RoomNameEvent,
-    # SqliteMemoryStore, broken
-    store,
-    SyncResponse,
-    ToDeviceError,
 )
-
-from datetime import datetime
-from session import Session
 from colorama import Fore, Style
 
-from client import VersationsClient
-from client_callbacks import Callbacks
+from .client import VersationsClient
+from .client_callbacks import Callbacks
+from .session import Session
 
 
-HELP = f"""
+HELP = """
 How to use this script:
 
 Passwords, and all other variables to this program are set via environment variable:
@@ -67,25 +43,18 @@ Passwords, and all other variables to this program are set via environment varia
 #  - export MATRIX_ROOM_ID (Optional): Needed for send and other things, but not sync.
 #
 #    export TODO (ACCESS TOKEN FILE SHOULD BE ENCRYPTED)
-#  # export TODO(split into output and persistent)
+#    export TODO(split into output and persistent)
 #  - export MATRIX_STORE_PATH (Default: output/)
 """
 
-async def main() -> None:
+async def connect() -> VersationsClient:
     session=Session.from_file()
     client_config = AsyncClientConfig(
-        # TODO(in mememory store?)
-        # store=store.DefaultStore(),
-        # https://github.com/poljar/matrix-nio/issues/163#issuecomment-641225582
-        # store=SqliteMemoryStore,
-        # store=store.DefaultStore(session.user_id, session.device_id, "output"),
         max_limit_exceeded=0,
         max_timeouts=0,
         store_sync_tokens=True,
         encryption_enabled=True,
     )
-    # Load our saved session
-    # import ipdb; ipdb.set_trace()
     client = VersationsClient(session=session, config=client_config, store_path="/mnt/datasets/con/matrix-archive")
     callbacks = Callbacks(client)
     client.add_to_device_callback(callbacks.to_device_callback, (KeyVerificationEvent,))
@@ -96,26 +65,18 @@ async def main() -> None:
                                  access_token=session.access_token)
             print(f"{Fore.GREEN}Login restored from token{Style.RESET_ALL}")
             print(f"{Fore.WHITE} This device is: {Fore.MAGENTA}{session.device_id}{Style.RESET_ALL}")
-        except LocalProtocolError as e:
-            print(f"""{Fore.RED} There is an access token it still didnt wor. Maybe no device id?
+        except LocalProtocolError:
+            print(f"""{Fore.RED} There is an access token but it didnt work. Maybe no device id?
             Thats a weird situation... probably you should just delete that
             session file and start from scratch.""")
     else: # First time
         print(f"{Fore.YELLOW}No access token, attempting password login.{Style.RESET_ALL}")
-        # TODO configure
-        # os.makedirs("output", exist_ok=True)
-        # TODO unless response is error...
-        # print("swallowing exception for token login: {e}")
+        os.makedirs("output", exist_ok=True)
         await client.password_login()
-    # TODO this is bad. how can we do this better...
-        # this doesnt need to be run every time. ?
-        # add configuration?
 
-    print("Loading encryption store.")
-    print("(takes a minute)  ...")
+    print("Loading encryption store. (takes a minute  ...)")
     client.load_store()
 
-    # TODO(if we are using exported keys, is this necessary?
     if session.new_session:
         print(f"""{Fore.GREEN}You've come so far, you're almost there.
 
@@ -133,35 +94,56 @@ async def main() -> None:
         await client.keys_upload()
 
 
-    # TODO(whats the order this has to happen?)
     if not (session.keys_path and session.keys_passphrase):
         raise Exception(HELP + "\n\n ...\nPlease set keys_path and passphrase")
-    await client.import_keys(session.keys_path, session.keys_passphrase)
+
+    if os.path.isfile(session.keys_path):
+        await client.import_keys(session.keys_path, session.keys_passphrase)
 
     # Trust the other bot devices
     client.trust_user_all_devices(session.user_id)
-    # Trust foreach [users]
-    # TODO store in session
+    # TODO Trust foreach [users]
     client.trust_user_all_devices("@asmacdo:matrix.org")
+    return client
 
-    # Write each message to file
-    client.add_event_callback(client.write_message_event, RoomMessageText)
-    client._messages_written = 0
+def coro(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        return asyncio.run(f(*args, **kwargs))
+    return wrapper
 
-    print(f"{Fore.GREEN}Initial Sync{Style.RESET_ALL}")
-    response = await client.sync(timeout=30000, full_state=True)
-    client.check_response(response, SyncResponse, f"failed to sync  got {str(response)}")
+@click.group(help="Versations is a Matrix bot that logs chat records and sends messages.")
+def cli():
+    pass
 
-    session.next_batch = response.next_batch
-    session.write_to_disk()
-
+@cli.command(help="Sync with the specified room, and output to a file.")
+@click.option("--room", help="Matrix Room ID to sync with")
+@coro
+async def sync(room):
+    client = await connect()
+    await client.log_messages()
+    client.session.write_to_disk()
     await client.close()
 
-try:
-    asyncio.run(main())
-except Exception:
-    print(traceback.format_exc())
-    sys.exit(1)
-except KeyboardInterrupt:
-    print("Received keyboard interrupt.")
-    sys.exit(0)
+@cli.command(help="Sync with a room and then send a message")
+@click.option("--room", required=True, help="Matrix Room ID to send a message to.")
+@click.option('-f', '--file', type=click.File('r'), help='Path to outgoing message file')
+@click.option('--md', is_flag=True, default=False, help="Render the message as markdown.")
+@click.argument("message", required=False)
+@coro
+async def send(room, file, md, message):
+    if file and message:
+        raise ValueError("Either the message string or a message file must be provided, not both!")
+    if not (file or message):
+        message = sys.stdin.read()
+        if not message:
+            raise ValueError("Either the message string, stdin, or a message file must be provided!")
+    if file:
+        message = file.read()
+    client = await connect()
+    await client.log_messages()
+    await client.send_message(room, body=message, convert_markdown=md)
+    # To capture the message we just sent. I dont feel strongly about keeping that.
+    await client.log_messages()
+    client.session.write_to_disk()
+    await client.close()

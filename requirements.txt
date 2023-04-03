@@ -1,4 +1,0 @@
-# e2e goodness would need to build something which needs
-# libolm-dev  on debian systems
-matrix-nio[e2e]
-pyyaml
