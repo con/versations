@@ -74,22 +74,24 @@ class VersationsClient(AsyncClient):
 
     async def send_message(self, room_id, body=None, convert_markdown=False):
         try:
-            content = {
-                "msgtype": "m.text",
-                "format": "org.matrix.custom.html",
-                "body": body,
-            }
-            # Convert to html
-            if convert_markdown:
-                content["formatted_body"] = markdown.markdown(body)
-
-            # We must ignore unverified, or we cannot send messages if anyone has an unverified device.
-            await self.room_send(
-                room_id=room_id,
-                message_type="m.room.message",
-                content=content,
-                ignore_unverified_devices=True,
-            )
+            sections = body.split("##### ")  # Or another marker
+            for i, section in enumerate(sections):
+                section_md = "##### " + section if i > 0 else section  # re-add heading
+                if convert_markdown:
+                    html = markdown.markdown(section_md)
+                content = {
+                    "msgtype": "m.text",
+                    "format": "org.matrix.custom.html",
+                    "body": f"Part {i+1}",
+                    "formatted_body": html,
+                }
+                # We must ignore unverified, or we cannot send messages if anyone has an unverified device.
+                await self.room_send(
+                    room_id=room_id,
+                    message_type="m.room.message",
+                    content=content,
+                    ignore_unverified_devices=True,
+                )
         except exceptions.OlmUnverifiedDeviceError:
             print("probably need to run the verify session")
             raise
