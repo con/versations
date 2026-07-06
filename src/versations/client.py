@@ -1,3 +1,4 @@
+import asyncio
 import markdown
 import os
 import sys
@@ -50,8 +51,23 @@ class VersationsClient(AsyncClient):
         self._messages_written = 0
 
         print(f"{Fore.GREEN}Initial Sync{Style.RESET_ALL}")
-        response = await self.sync(timeout=30000, full_state=True)
-        self.check_response(response, SyncResponse, f"failed to sync  got {str(response)}")
+        # matrix.org occasionally returns a malformed sync (e.g. missing
+        # 'next_batch'), which nio surfaces as a SyncError. That's a transient
+        # server blip, so retry with backoff before giving up and letting the
+        # process exit non-zero (which the cron reports by email).
+        backoffs = (30, 60, 120)
+        for attempt in range(1, len(backoffs) + 2):  # 4 attempts total
+            response = await self.sync(timeout=30000, full_state=True)
+            if isinstance(response, SyncResponse):
+                break
+            # nio's SyncError is a dataclass (subclass of Response), not an
+            # Exception, so sync() returns it rather than raising. Its __str__
+            # already renders status_code + message, so just interpolate it.
+            if attempt > len(backoffs):
+                raise Exception(f"failed to sync after {attempt} attempts: {response}")
+            wait = backoffs[attempt - 1]
+            print(f"{Fore.YELLOW}sync attempt {attempt} failed ({response}); retrying in {wait}s{Style.RESET_ALL}")
+            await asyncio.sleep(wait)
         print(f"{Fore.GREEN}Retrieved {self._messages_written} messages")
 
         self.session.next_batch = response.next_batch
