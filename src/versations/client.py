@@ -101,7 +101,7 @@ class VersationsClient(AsyncClient):
                 content = {
                     "msgtype": "m.text",
                     "format": "org.matrix.custom.html",
-                    "body": f"Part {i+1}",
+                    "body": section_md,
                     "formatted_body": html,
                 }
                 # We must ignore unverified, or we cannot send messages if anyone has an unverified device.
