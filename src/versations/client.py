@@ -23,6 +23,10 @@ class VersationsClient(AsyncClient):
             store_path=store_path,
             config=config
         )
+        # Registered once here rather than in log_messages(): add_event_callback
+        # appends, so a second log_messages() call in the same run (send does
+        # two) would leave two callbacks registered and log each event twice.
+        self.add_event_callback(self.write_message_event, RoomMessageText)
     async def write_message_event(self, room, event: RoomMessageText):
         """Callback to write a received message to disk.
 
@@ -47,7 +51,6 @@ class VersationsClient(AsyncClient):
 
     async def log_messages(self):
         """Write each not-yet-synced message to log file"""
-        self.add_event_callback(self.write_message_event, RoomMessageText)
         self._messages_written = 0
 
         print(f"{Fore.GREEN}Initial Sync{Style.RESET_ALL}")
