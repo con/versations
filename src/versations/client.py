@@ -10,6 +10,7 @@ from nio import (
     exceptions,
     LoginResponse,
     RoomMessageText,
+    RoomSendResponse,
     SyncResponse,
 )
 
@@ -23,6 +24,10 @@ class VersationsClient(AsyncClient):
             store_path=store_path,
             config=config
         )
+        # Registered once here rather than in log_messages(): add_event_callback
+        # appends, so a second log_messages() call in the same run (send does
+        # two) would leave two callbacks registered and log each event twice.
+        self.add_event_callback(self.write_message_event, RoomMessageText)
     async def write_message_event(self, room, event: RoomMessageText):
         """Callback to write a received message to disk.
 
@@ -47,7 +52,6 @@ class VersationsClient(AsyncClient):
 
     async def log_messages(self):
         """Write each not-yet-synced message to log file"""
-        self.add_event_callback(self.write_message_event, RoomMessageText)
         self._messages_written = 0
 
         print(f"{Fore.GREEN}Initial Sync{Style.RESET_ALL}")
@@ -91,6 +95,10 @@ class VersationsClient(AsyncClient):
     async def send_message(self, room_id, body=None, convert_markdown=False):
         try:
             sections = body.split("##### ")  # Or another marker
+            # The first section posts to the room timeline as usual; the rest
+            # are threaded under it, so a long report is one timeline entry
+            # with a "N replies" chip instead of N entries.
+            thread_root = None
             for i, section in enumerate(sections):
                 section_md = "##### " + section if i > 0 else section  # re-add heading
                 if convert_markdown:
@@ -98,16 +106,32 @@ class VersationsClient(AsyncClient):
                 content = {
                     "msgtype": "m.text",
                     "format": "org.matrix.custom.html",
-                    "body": f"Part {i+1}",
+                    "body": section_md,
                     "formatted_body": html,
                 }
+                if thread_root is not None:
+                    content["m.relates_to"] = {
+                        "rel_type": "m.thread",
+                        "event_id": thread_root,
+                    }
                 # We must ignore unverified, or we cannot send messages if anyone has an unverified device.
-                await self.room_send(
+                response = await self.room_send(
                     room_id=room_id,
                     message_type="m.room.message",
                     content=content,
                     ignore_unverified_devices=True,
                 )
+                # room_send returns RoomSendError on failure, which has no
+                # event_id. Without the root's id there is nothing to thread
+                # under, so fail loudly rather than post the rest to the timeline.
+                self.check_response(
+                    response,
+                    RoomSendResponse,
+                    fail_msg=f"Failed to send section {i+1} of {len(sections)}: {response}",
+                )
+                if thread_root is None:
+                    thread_root = response.event_id
+                    print(f"{Fore.GREEN}Thread root: {thread_root}{Style.RESET_ALL}")
         except exceptions.OlmUnverifiedDeviceError:
             print("probably need to run the verify session")
             raise

@@ -50,7 +50,13 @@ Passwords, and all other variables to this program are set via environment varia
 async def connect() -> VersationsClient:
     session=Session.from_file()
     client_config = AsyncClientConfig(
-        max_limit_exceeded=0,
+        # A report is sent as one message per section, which overruns the
+        # homeserver's per-user send burst allowance; the tail sections come
+        # back M_LIMIT_EXCEEDED. Letting nio retry makes it wait out the
+        # server's own retry_after_ms hint instead of dropping them. Bounded
+        # rather than None/unlimited: this runs under flock in cron, so an
+        # endlessly-ratelimited send would hold the lock and skip later runs.
+        max_limit_exceeded=10,
         max_timeouts=0,
         store_sync_tokens=True,
         encryption_enabled=True,
