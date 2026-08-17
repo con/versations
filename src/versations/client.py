@@ -15,6 +15,63 @@ from nio import (
 )
 
 
+# Matrix caps a single event at 65536 bytes, and in an encrypted room the body
+# is megolm-encrypted then base64-encoded (~4/3 expansion) before that limit is
+# checked. A 16 KB markdown body renders to ~19 KB of HTML, so the event content
+# is ~36 KB and ~48 KB on the wire once encrypted -- comfortably under the limit
+# with room to grow. Sections larger than this are split across several messages
+# rather than rejected with M_TOO_LARGE (which is what silently dropped the
+# "Covered projects" section once its one line of repo links crept past ~48 KB).
+MAX_BODY_BYTES = 16000
+
+
+def split_to_budget(text, max_bytes=MAX_BODY_BYTES):
+    """Break text into pieces each at most max_bytes UTF-8 bytes.
+
+    Prefers to break on newlines, then on '; ' (the separator between repos in
+    the one-line 'Covered projects' section), and falls back to a hard character
+    split so even an unbreakable run still gets through.
+    """
+    if len(text.encode()) <= max_bytes:
+        return [text]
+
+    for sep in ("\n", "; "):
+        if sep not in text:
+            continue
+        pieces, current = [], ""
+        for part in text.split(sep):
+            candidate = current + sep + part if current else part
+            if len(candidate.encode()) <= max_bytes:
+                current = candidate
+            else:
+                if current:
+                    pieces.append(current)
+                current = part
+        if current:
+            pieces.append(current)
+        # A single part may still be over budget (e.g. one huge line); recurse
+        # so it gets broken on the next-finer separator.
+        result = []
+        for piece in pieces:
+            if len(piece.encode()) > max_bytes:
+                result.extend(split_to_budget(piece, max_bytes))
+            else:
+                result.append(piece)
+        return result
+
+    # No separator helped: hard-split on character boundaries.
+    result, current = [], ""
+    for ch in text:
+        if len((current + ch).encode()) > max_bytes:
+            result.append(current)
+            current = ch
+        else:
+            current += ch
+    if current:
+        result.append(current)
+    return result
+
+
 class VersationsClient(AsyncClient):
     def __init__(self, session, config=None, store_path=None):
         self.session = session
@@ -95,20 +152,29 @@ class VersationsClient(AsyncClient):
     async def send_message(self, room_id, body=None, convert_markdown=False):
         try:
             sections = body.split("##### ")  # Or another marker
-            # The first section posts to the room timeline as usual; the rest
+            # Re-add the heading that split() stripped, then break any section
+            # that would overrun the Matrix event-size limit into several
+            # messages. Whitespace-only chunks (e.g. an empty leading split)
+            # are dropped so we never post a blank message.
+            messages = []
+            for i, section in enumerate(sections):
+                section_md = "##### " + section if i > 0 else section
+                for chunk in split_to_budget(section_md):
+                    if chunk.strip():
+                        messages.append(chunk)
+
+            # The first message posts to the room timeline as usual; the rest
             # are threaded under it, so a long report is one timeline entry
             # with a "N replies" chip instead of N entries.
             thread_root = None
-            for i, section in enumerate(sections):
-                section_md = "##### " + section if i > 0 else section  # re-add heading
-                if convert_markdown:
-                    html = markdown.markdown(section_md)
+            for j, message_md in enumerate(messages):
                 content = {
                     "msgtype": "m.text",
-                    "format": "org.matrix.custom.html",
-                    "body": section_md,
-                    "formatted_body": html,
+                    "body": message_md,
                 }
+                if convert_markdown:
+                    content["format"] = "org.matrix.custom.html"
+                    content["formatted_body"] = markdown.markdown(message_md)
                 if thread_root is not None:
                     content["m.relates_to"] = {
                         "rel_type": "m.thread",
@@ -127,7 +193,7 @@ class VersationsClient(AsyncClient):
                 self.check_response(
                     response,
                     RoomSendResponse,
-                    fail_msg=f"Failed to send section {i+1} of {len(sections)}: {response}",
+                    fail_msg=f"Failed to send message {j+1} of {len(messages)}: {response}",
                 )
                 if thread_root is None:
                     thread_root = response.event_id
